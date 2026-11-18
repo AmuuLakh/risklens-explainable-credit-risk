@@ -41,7 +41,7 @@ The real default rate is 0.081, and always predicting 8% gives a Brier score of 
 
 ![Calibration curve](reports/figures/calibration_curve.png)
 
-After calibration, the real default rate goes from **1.3%** in the safest 10% of applicants to **28.6%** in the riskiest 10%, and the predicted probabilities match these rates closely. The riskiest 10% contain roughly a third of all defaults. Even so, about 7 in 10 applicants in the riskiest group repay, so the model sorts applicants by risk but can't say who will default.
+After calibration, the real default rate goes from **1.3%** in the safest 10% of applicants to **28.6%** in the riskiest 10%, and the predicted probabilities match these rates closely. The riskiest 10% contain 35% of all defaults and the riskiest 20% contain 55%. Even so, about 7 in 10 applicants in the riskiest group repay, so the model sorts applicants by risk but can't say who will default.
 
 
 **Notes**
@@ -76,7 +76,7 @@ The dependence plots for `EXT_SOURCE_3` and `DAYS_EMPLOYED` are in `reports/figu
 
 -**Calibration only holds for this dataset.** I calibrated the scores with Platt scaling on half of the validation set. The probabilities match the real default rate here, but if the applicants or the default rate changed, I'd have to calibrate again.
 - Recall and precision in the results table use a 0.5 threshold on the *raw* scores, before calibration. I'll choose a threshold on the calibrated probabilities later.
-- The SHAP plots are on the raw (uncalibrated) scale. Platt scaling is a straight line on the log-odds, so the directions and rankings of the features don't change, only the size of the effects.
+- The SHAP plots are on the raw (uncalibrated) scale. The Platt calibration is a straight line on the log-odds (slope 1.05), so the directions and rankings of the features are the same and the effects are only about 5% larger on the calibrated scale.
 - SHAP shows what the model uses, not what causes default.
 - No hyperparameter tuning, and a single random split (there is no date column in the data).
 - Only 5,000 rows are used for the SHAP plots.
