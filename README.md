@@ -16,7 +16,7 @@ Home Credit Default Risk (Kaggle). The data is not stored in this repo.
 - `data/`: local only, gitignored
 
 ## Status
-Baseline, LightGBM, SHAP and calibration done. Next: fairness checks, API, Docker, drift monitoring.
+Baseline, LightGBM, SHAP, calibration and fairness check done. Next: final threshold, model card, API, Docker, drift monitoring.
 
 ## Results
 
@@ -72,6 +72,30 @@ Two single applicants (the highest and lowest risk in the sample):
 
 The dependence plots for `EXT_SOURCE_3` and `DAYS_EMPLOYED` are in `reports/figures/`.
 
+
+## Fairness check (gender and age)
+
+SHAP showed that gender is one of the model's most used features and that age is in the model twice, so I checked how the model treats different groups. I flagged the riskiest 20% of applicants (a cutoff of 12.6% calibrated default probability) and compared the groups on the test half of the validation set (30,752 applicants).
+
+![Share flagged by group](reports/figures/fairness_flag_rates.png)
+
+| Group | Real default rate | Flagged | False positive rate |
+|---|---|---|---|
+| Women | 7.0% | 16.0% | 13.5% |
+| Men | 10.2% | 27.9% | 24.0% |
+| Age 20-30 | 11.3% | 36.7% | 32.9% |
+| Age 60-70 | 4.4% | 6.7% | 5.8% |
+
+(False positive rate: share of the people who would have repaid who get flagged anyway.)
+
+**What I found**
+- The groups really differ in the data, and the model's probabilities are accurate inside each group. But flagging the top 20% makes the gaps bigger than the differences in default rate.
+- A young applicant who would repay is about 5-6 times more likely to be flagged by mistake than an older one.
+- Removing gender and age from the model costs almost nothing (ROC AUC 0.7657 → 0.7647, Brier 0.0671 → 0.0673) and narrows the gender gap by about a quarter to a third, but it doesn't change the age gap.
+- The remaining columns can still predict gender with an AUC of 0.899, so the model isn't blind to it.
+
+**Decision:** the final model doesn't use gender and age (`CODE_GENDER`, `DAYS_BIRTH`, `AGE`). I don't claim that it's fair, only that it doesn't use these attributes directly.
+
 ## Limitations
 
 -**Calibration only holds for this dataset.** I calibrated the scores with Platt scaling on half of the validation set. The probabilities match the real default rate here, but if the applicants or the default rate changed, I'd have to calibrate again.
@@ -80,4 +104,4 @@ The dependence plots for `EXT_SOURCE_3` and `DAYS_EMPLOYED` are in `reports/figu
 - SHAP shows what the model uses, not what causes default.
 - No hyperparameter tuning, and a single random split (there is no date column in the data).
 - Only 5,000 rows are used for the SHAP plots.
-- The model currently uses gender and age. I'm checking what this does in the fairness part.
+- The final model doesn't use gender and age directly, but other columns still carry that information, and the fairness check shows large differences in who gets flagged, especially by age. It used one random split, one threshold that I chose myself, and only gender and age. It's not a legal assessment.
