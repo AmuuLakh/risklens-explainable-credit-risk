@@ -16,7 +16,7 @@ Home Credit Default Risk (Kaggle). The data is not stored in this repo.
 - `data/`: local only, gitignored
 
 ## Status
-Baseline and LightGBM done (ROC AUC 0.763). Next: SHAP explanations, fairness checks, API.
+Baseline, LightGBM, SHAP and calibration done. Next: fairness checks, API, Docker, drift monitoring.
 
 ## Results
 
@@ -26,6 +26,23 @@ Validation set: 20% of the applicants (61,503 rows), stratified split, `random_s
 |---|---|---|---|---|
 | Logistic regression (baseline) | 0.744 | 0.224 | 0.670 | 0.159 |
 | LightGBM | 0.763 | 0.258 | 0.674 | 0.174 |
+
+
+### Calibration
+
+I trained with balanced class weights, so the raw scores were too high (average 0.40 against a real default rate of 0.08). I calibrated them with Platt scaling, fitted on half of the validation set and tested on the other half.
+
+| Scores | Mean predicted | Brier | Log loss | ROC AUC |
+|---|---|---|---|---|
+| Raw | 0.399 | 0.186 | 0.552 | 0.766 |
+| Platt-calibrated | 0.080 | 0.067 | 0.244 | 0.766 |
+
+The real default rate is 0.081, and always predicting 8% gives a Brier score of 0.074.
+
+![Calibration curve](reports/figures/calibration_curve.png)
+
+After calibration, the real default rate goes from **1.3%** in the safest 10% of applicants to **28.6%** in the riskiest 10%, and the predicted probabilities match these rates closely. The riskiest 10% contain roughly a third of all defaults. Even so, about 7 in 10 applicants in the riskiest group repay, so the model sorts applicants by risk but can't say who will default.
+
 
 **Notes**
 - 8.1% of the loans are defaults, so I didn't use accuracy. A random model would get a PR AUC of about 0.081.
@@ -57,7 +74,9 @@ The dependence plots for `EXT_SOURCE_3` and `DAYS_EMPLOYED` are in `reports/figu
 
 ## Limitations
 
-- **The scores are not real probabilities.** I trained with `class_weight="balanced"` because only 8% of the loans are defaults, so the model scores as if half of the applicants were defaults. The ranking (AUC) and the SHAP effects are still meaningful, but a score of 0.9 does not mean a 90% chance of default. Calibration is the next step.
+-**Calibration only holds for this dataset.** I calibrated the scores with Platt scaling on half of the validation set. The probabilities match the real default rate here, but if the applicants or the default rate changed, I'd have to calibrate again.
+- Recall and precision in the results table use a 0.5 threshold on the *raw* scores, before calibration. I'll choose a threshold on the calibrated probabilities later.
+- The SHAP plots are on the raw (uncalibrated) scale. Platt scaling is a straight line on the log-odds, so the directions and rankings of the features don't change, only the size of the effects.
 - SHAP shows what the model uses, not what causes default.
 - No hyperparameter tuning, and a single random split (there is no date column in the data).
 - Only 5,000 rows are used for the SHAP plots.
