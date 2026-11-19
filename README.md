@@ -16,7 +16,8 @@ Home Credit Default Risk (Kaggle). The data is not stored in this repo.
 - `data/`: local only, gitignored
 
 ## Status
-Baseline, LightGBM, SHAP, calibration and fairness check done. Next: final threshold, model card, API, Docker, drift monitoring.
+## Status
+Baseline, LightGBM, SHAP, calibration, fairness check and threshold done. Next: API, Docker, drift monitoring.
 
 ## Results
 
@@ -95,6 +96,22 @@ SHAP showed that gender is one of the model's most used features and that age is
 - The remaining columns can still predict gender with an AUC of 0.899, so the model isn't blind to it.
 
 **Decision:** the final model doesn't use gender and age (`CODE_GENDER`, `DAYS_BIRTH`, `AGE`). I don't claim that it's fair, only that it doesn't use these attributes directly.
+
+## Final model and threshold
+
+The final model is LightGBM without gender and age, calibrated with Platt scaling (ROC AUC 0.7647 and Brier score 0.0673 on the test half of the validation set, 30,752 applicants).
+
+To turn the probabilities into a decision, I assumed that a missed default costs 5 times as much as a false alarm. With calibrated probabilities, the best rule is then to flag applicants above 1 / (1 + 5) = **16.7%**. The 5 is my assumption, since I don't know the real costs.
+
+| Threshold | Flagged | Recall | Precision | False positive rate |
+|---|---|---|---|---|
+| 16.7% | 12.4% | 40.5% | 26.3% | 10.0% |
+
+![Cost curve](reports/figures/threshold_cost_curve.png)
+
+The lowest point of each cost curve sits where the formula says it should, which is a good sign for the calibration. Compared with flagging nobody, the model lowers the average cost by 17.8%, so it helps, but only moderately.
+
+More details are in [MODEL_CARD.md](MODEL_CARD.md).
 
 ## Limitations
 
